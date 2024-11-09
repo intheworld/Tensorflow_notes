@@ -3,7 +3,6 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 import matplotlib.pyplot as plt
-from sympy.physics.units import action
 
 import rl_utils
 
