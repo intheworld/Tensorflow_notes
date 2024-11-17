@@ -4,12 +4,8 @@ import torch.nn.functional as F
 import torch.nn as nn
 import numpy as np
 import matplotlib.pyplot as plt
-from omniidl_be.cxx.config import state
 from tqdm import tqdm
 import random
-
-from triton.language import dtype
-
 import rl_utils
 from ppo import PPO
 from ppo import PolicyNet
