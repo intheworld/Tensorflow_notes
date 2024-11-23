@@ -1,4 +1,7 @@
+import argparse
+
 import gymnasium as gym
+from gymnasium import Env
 from stable_baselines3 import SAC
 import os
 
@@ -8,29 +11,46 @@ log_dir = ".output/logs"
 os.makedirs(model_dir, exist_ok=True)
 os.makedirs(log_dir, exist_ok=True)
 
-env_name = 'Humanoid-v4'
+def train(env: Env):
+    model = SAC("MlpPolicy", env, verbose=1, device='cuda',
+                tensorboard_log=log_dir)
+    TIMESTEPS = 25000
+    iters = 0
+    while True:
+        iters += 1
+        model.learn(total_timesteps=TIMESTEPS, reset_num_timesteps=False)
+        model.save(f"{model_dir}/SAC_{TIMESTEPS*iters}")
 
-gymenv = gym.make(env_name, render_mode=None)
+def test(env: Env, path_to_model: str):
+    model = SAC.load(path_to_model)
+    env = gym.make(env, render_mode='human')
+    obs = env.reset()[0]
+    done = False
+    extra_steps = 500
+    while not done:
+        action, _ = model.predict(obs)
+        obs, _, done, _, _ = env.step(action)
+        env.render()
+        if done:
+                extra_steps -= 1
+                if extra_steps < 0:
+                    break
 
-model = SAC("MlpPolicy", gymenv, verbose=1, device='cuda', 
-            tensorboard_log=log_dir)
-model.learn(total_timesteps = 25000)
-model.save(f"{model_dir}/sac_humanoid")
 
-del model
-model = SAC.load(f"{model_dir}/sac_humanoid")
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Train or test model.')
+    parser.add_argument('gymenv', help='Gymnasium environment i.e. Humanoid-v4')
+    parser.add_argument('-t', '--train', action='store_true')
+    parser.add_argument('-s', '--test', metavar='path_to_model')
+    args = parser.parse_args()
 
-gymenv = gym.make(env_name, render_mode='human')
-obs = gymenv.reset()[0]
-done = False
-extra_steps = 500
-while True:
-    action, _ = model.predict(obs)
-    obs, _, done, _, _ = gymenv.step(action)
-    gymenv.render()
-    if done:
-            extra_steps -= 1
+    if args.train:
+        gym_env = gym.make(args.gymenv, render_mode=None)
+        train(gym_env)
 
-            if extra_steps < 0:
-                break
-
+    if args.test:
+        if os.path.isfile(args.test):
+            gym_env = gym.make(args.gymenv, render_mode='human')
+            test(gym_env, path_to_model=args.test)
+        else:
+            print(f'{args.test} not found.')
