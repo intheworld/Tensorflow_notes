@@ -23,7 +23,6 @@ def train(env: Env):
 
 def test(env: Env, path_to_model: str):
     model = SAC.load(path_to_model)
-    env = gym.make(env, render_mode='human')
     obs = env.reset()[0]
     done = False
     extra_steps = 500
