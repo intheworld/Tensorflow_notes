@@ -126,7 +126,7 @@ def get_or_build_tokenizer(config, ds, lang):
 
 
 def get_ds(config):
-    ds_raw = load_dataset(f"{config['datasource']}", f"{config['lang_src']}-{config['lang_tgt']}", split='train')
+    ds_raw = load_dataset(f'{config["datasource"]}', f'{config["lang_src"]}-{config["lang_tgt"]}', split='train')
 
     # Build tokenizers
     tokenizer_src = get_or_build_tokenizer(config, ds_raw, config['lang_src'])
@@ -176,7 +176,7 @@ def train_model(config):
     
     device = torch.device(device)
 
-    Path(f"{config['datasource_']}_{config['model_folder']}").mkdir(parents=True, exist_ok=True)
+    Path(f"{config['datasource']}_{config['model_folder']}").mkdir(parents=True, exist_ok=True)
 
     train_dataloader, val_dataloader, tokenizer_src, tokenizer_tgt = get_ds(config)
     model = get_model(config=config, vocab_src_len=tokenizer_src.get_vocab_size(), vocab_tgt_len=tokenizer_tgt.get_vocab_size()).to(device)
@@ -246,7 +246,7 @@ def train_model(config):
 
 
 if __name__ == '__main__':
-    # warnings.filterwarnings("ignore")
+    warnings.filterwarnings("ignore")
     config = get_config()
     train_model(config)
 
