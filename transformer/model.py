@@ -67,7 +67,7 @@ class PositionalEncoding(nn.Module):
 class ResidualConnection(nn.Module):
     def __init__(self, features: int, dropout: float) -> None:
         super().__init__()
-        self.dropout == nn.Dropout(dropout)
+        self.dropout = nn.Dropout(dropout)
         self.norm = LayerNormalization(features)
 
     def forward(self, x, sublayer):
@@ -157,11 +157,11 @@ class DecoderBlock(nn.Module):
         self.feed_forward_block = feed_forward_block
         self.residual_connections = nn.ModuleList([ResidualConnection(features, dropout) for _ in range(3)])
 
-        def forward(self, x, encoder_output, src_mask, tgt_mask):
-            x = self.residual_connections[0](x, lambda x: self.self_attension_block(x, x, x, tgt_mask))
-            x = self.residual_connections[1](x, lambda x: self.cross_attention_block(x, encoder_output, encoder_output, src_mask))
-            x = self.residual_connections[2](x, lambda x: self.feed_forward_block)
-            return x
+    def forward(self, x, encoder_output, src_mask, tgt_mask):
+        x = self.residual_connections[0](x, lambda x: self.self_attention_block(x, x, x, tgt_mask))
+        x = self.residual_connections[1](x, lambda x: self.cross_attention_block(x, encoder_output, encoder_output, src_mask))
+        x = self.residual_connections[2](x, self.feed_forward_block)
+        return x
         
 
 class Decoder(nn.Module):
@@ -210,7 +210,7 @@ class Transformer(nn.Module):
         tgt = self.tgt_pos(tgt)
         return self.decoder(tgt, encoder_output, src_mask, tgt_mask)
     
-    def projection(self, x):
+    def project(self, x):
         # (batch, seq_len, vocab_size)
         return self.projection_layer(x)
 
