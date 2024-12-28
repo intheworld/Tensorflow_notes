@@ -2,7 +2,7 @@ from typing import Optional, Tuple
 import torch
 import torch.nn as nn
 
-class SiglipVisonConfig:
+class SiglipVisionConfig:
 
     def __init__(
         self,
@@ -32,7 +32,7 @@ class SiglipVisonConfig:
 
 
 class SiglipVisionEmbedding(nn.Module):
-    def __init__(self, config: SiglipVisonConfig):
+    def __init__(self, config: SiglipVisionConfig):
         super().__init__()
         self.config = config
         self.embed_dim = config.hidden_size
@@ -72,7 +72,7 @@ class SiglipVisionEmbedding(nn.Module):
 
 class SiglipAttention(nn.Module):
 
-    def __init__(self, config: SiglipVisonConfig):
+    def __init__(self, config: SiglipVisionConfig):
         super().__init__()
         self.config = config
         self.embed_dim = config.hidden_size
@@ -137,5 +137,88 @@ class SiglipAttention(nn.Module):
         return attn_output, attn_weights
 
 
+class SiglipMLP(nn.Module):
+    def __init__(self, config: SiglipVisionConfig):
+        super().__init__()
+        self.config = config
+        self.fc1 = nn.Linear(config.hidden_size, config.intermediate_size)
+        self.fc2 = nn.Linear(config.intermediate_size, config.hidden_size)
+
+    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
+        # [Batch_Size, Num_Patches, Embed_Dim] -> [Batch_Size, Num_Patches, Intermediate_Size]
+        hidden_states = self.fc1(hidden_states)
+
+        hidden_states = nn.functional.gelu(hidden_states, approximate="tanh")
+        # hidden_states: [Batch_Size, Num_Patches, Intermediate_Size]
+        hidden_states = self.fc2(hidden_states)
+
+        return hidden_states
+    
+
+class SiglipEncoderLayer(nn.Module):
+    def __init__(self, config: SiglipVisionConfig):
+        super().__init__()
+        self.embed_dim = config.hidden_size
+        self.self_attn = SiglipAttention(config)
+        self.layer_norm1 = nn.LayerNorm(self.embed_dim, eps=config.layer_norm_eps)
+        self.mlp = SiglipMLP(config)
+        self.layer_norm2 = nn.LayerNorm(self.embed_dim, eps=config.layer_norm_eps)
+
+    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
+        residual = hidden_states
+        hidden_states = self.layer_norm1(hidden_states)
+        hidden_states, _ = self.self_attn(hidden_states=hidden_states)
+        hidden_states = residual + hidden_states
+        residual = hidden_states
+        hidden_states = self.layer_norm2(hidden_states)
+        hidden_states = self.mlp(hidden_states)
+        hidden_states = residual + hidden_states
+
+        return hidden_states
+    
+class SiglipEncoder(nn.Module):
+    def __init__(self, config: SiglipVisionConfig):
+        super().__init__()
+        self.config = config
+        self.layers = nn.ModuleList(
+            [SiglipEncoderLayer(config) for _ in range(config.num_hidden_layers)]
+        )
+
+    def forward(self, inputs_embeds: torch.Tensor) -> torch.Tensor:
+        hidden_states = inputs_embeds
+        for encoder_layers in self.layers:
+            hidden_states = encoder_layers(hidden_states)
+
+        return hidden_states
+    
+
+class SiglipVisionTransformer(nn.Module):
+    def __init__(self, config: SiglipVisionConfig):
+        super().__init__()
+        self.config = config
+        embed_dim = config.hidden_size
+
+        self.embeddings = SiglipVisionEmbedding(config)
+        self.encoder = SiglipEncoder(config)
+        self.post_layernorm = nn.LayerNorm(embed_dim, eps=config.layer_norm_eps)
+
+    def forward(self, pixel_values: torch.Tensor) -> torch.Tensor:
+        hidden_states = self.embeddings(pixel_values)
+        last_hidden_state = self.encoder(input_embeds=hidden_states)
+        last_hidden_state = self.post_layernorm(last_hidden_state)
+
+        return last_hidden_state
+    
+
+class SiglipVisionModel(nn.Module):
+    
+    def __init__(self, config: SiglipVisionConfig):
+        super().__init__()
+        self.config = config
+        self.vision_model = SiglipVisionTransformer(config)
+
+    def forward(self, pixel_vlaues) -> Tuple:
+        # [Batch_Size, Channels, Height, Width] -> [Batch_Size, Num_Patches, Embed_Dim]
+        return self.vision_model(pixel_vlaues=pixel_vlaues)
 
 
