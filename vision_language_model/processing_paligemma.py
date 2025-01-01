@@ -63,3 +63,10 @@ def process_images(
     # move dimension to [Channel, Height, Width]
     images = [image.transpose(2, 0, 1) for image in images]
     return images
+
+
+class PaliGemmaProcessor:
+    IMAGE_TOKEN = "<image>"
+
+    def __init__(self, tokenizer, num_image_tokens: int, image_size: int):
+        super().__init__()
