@@ -385,3 +385,40 @@ class PaliGemmaMultiModalProjector(nn.Module):
     def forward(self, image_features):
         hidden_states = self.linear(image_features)
         return hidden_states
+    
+class PaliGemmaForConditionalGeneration(nn.Module):
+    def __init__(self, config: PaliGemmaConfig):
+        super().__init__()
+        self.config = config
+        self.vision_tower = SiglipVisionModel(config.vision_config)
+        self.multi_modal_projector = PaliGemmaMultiModalProjector(config)
+        self.vocab_size = config.vocab_size
+
+        language_model = GemmaForCausalLM(config.text_config)
+        self.language_model = language_model
+
+        self.pad_token_id = self.config.pad_token_id if self.config.pad_token_id is not None else -1
+
+    def tie_weights(self):
+        return self.language_model.tie_weights()
+    
+    def _merge_input_ids_with_image_features(
+        self, image_features: torch.Tensor, inputs_embeds: torch.Tensor, input_ids: torch.Tensor, attension_mask: torch.Tensor, kv_cache: Optional[KVCache] = None
+    ):
+        _, _, embed_dim = image_features.shape
+        batch_size, sequence_length = input_ids.shape
+        dtype, device = inputs_embeds.dtype, inputs_embeds.device
+
+        scaled_image_features = image_features / (self.config.hidden_size**0.5)
+
+        final_embedding = torch.zeros(batch_size, sequence_length, embed_dim, dtype=inputs_embeds.dtype, device=inputs_embeds.device)
+
+        text_mask = (input_ids != self.config.image_token_index) & (input_ids != self.pad_token_id)
+
+        image_mask = input_ids == self.config.image_token_index
+
+        pad_mask = input_ids == self.pad_token_id
+
+        text_mask_expanded = text_mask.unsqueeze(-1).expand(-1, -1, embed_dim)
+        pad_mask_expanded = pad_mask.unsqueeze(-1).expand(-1, -1, embed_dim)
+        image_mask_expanded = image_mask.unsqueeze(-1).expand(-1, -1, embed_dim)
