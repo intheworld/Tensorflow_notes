@@ -1,8 +1,11 @@
 name: vlm
 channels:
   - conda-forge
+  - defaults
+  - nvidia
+  - pytorch
 dependencies:
-  - python==3.11.3
+  - python>=3.9
   - anaconda
   - pip
   - fire==0.6.0
