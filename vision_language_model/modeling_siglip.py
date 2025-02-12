@@ -18,20 +18,20 @@ class SiglipVisionConfig:
         num_image_tokens: int=None,
         **kwargs
     ):
-        super.__init__()
+        super().__init__()
         self.hidden_size = hidden_size
-        self.intermediate_size = intermediate_size,
-        self.num_hidden_layers = num_hidden_layers,
-        self.num_attention_heads = num_attention_heads,
-        self.num_channels = num_channels,
-        self.image_size = image_size,
-        self.patch_size = patch_size,
-        self.layer_norm_eps = layer_norm_eps,
-        self.attention_dropout = attention_dropout,
+        self.intermediate_size = intermediate_size
+        self.num_hidden_layers = num_hidden_layers
+        self.num_attention_heads = num_attention_heads
+        self.num_channels = num_channels
+        self.image_size = image_size
+        self.patch_size = patch_size
+        self.layer_norm_eps = layer_norm_eps
+        self.attention_dropout = attention_dropout
         self.num_image_tokens = num_image_tokens
 
 
-class SiglipVisionEmbedding(nn.Module):
+class SiglipVisionEmbeddings(nn.Module):
     def __init__(self, config: SiglipVisionConfig):
         super().__init__()
         self.config = config
@@ -110,7 +110,7 @@ class SiglipAttention(nn.Module):
 
         attn_weights = (torch.matmul(query_states, key_states.transpose(2, 3)) * self.scale)
 
-        if attn_weights.size != (batch_size, self.num_heads, seq_len, seq_len):
+        if attn_weights.size() != (batch_size, self.num_heads, seq_len, seq_len):
             raise ValueError(
                 f"Attention weights should be of size {(batch_size, self.num_heads, seq_len, seq_len)}, but is"
                 f" {attn_weights.size()}"
@@ -198,13 +198,13 @@ class SiglipVisionTransformer(nn.Module):
         self.config = config
         embed_dim = config.hidden_size
 
-        self.embeddings = SiglipVisionEmbedding(config)
+        self.embeddings = SiglipVisionEmbeddings(config)
         self.encoder = SiglipEncoder(config)
         self.post_layernorm = nn.LayerNorm(embed_dim, eps=config.layer_norm_eps)
 
     def forward(self, pixel_values: torch.Tensor) -> torch.Tensor:
         hidden_states = self.embeddings(pixel_values)
-        last_hidden_state = self.encoder(input_embeds=hidden_states)
+        last_hidden_state = self.encoder(inputs_embeds=hidden_states)
         last_hidden_state = self.post_layernorm(last_hidden_state)
 
         return last_hidden_state
@@ -217,8 +217,8 @@ class SiglipVisionModel(nn.Module):
         self.config = config
         self.vision_model = SiglipVisionTransformer(config)
 
-    def forward(self, pixel_vlaues) -> Tuple:
+    def forward(self, pixel_values) -> Tuple:
         # [Batch_Size, Channels, Height, Width] -> [Batch_Size, Num_Patches, Embed_Dim]
-        return self.vision_model(pixel_vlaues=pixel_vlaues)
+        return self.vision_model(pixel_values=pixel_values)
 
 

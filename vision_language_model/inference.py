@@ -94,7 +94,7 @@ def _sample_top_p(probs: torch.Tensor, p: float):
 
 
 def main(
-    model_path: str = None,
+    model_path: str = "/media/swliu/DATA5/paligemma-3b-pt-224",
     prompt: str = None,
     image_file_path: str = None,
     max_tokens_to_generate: int = 100,

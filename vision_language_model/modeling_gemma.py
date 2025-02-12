@@ -107,7 +107,7 @@ class GemmaRMSNorm(nn.Module):
         self.weight = nn.Parameter(torch.zeros(dim))
 
     def _norm(self, x):
-        return x * torch.rsqrt(x,pow(2).mean(-1, keepdim=True) + self.eps)
+        return x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps)
 
     def forward(self, x):
         output = self._norm(x.float())
@@ -189,7 +189,7 @@ class GemmaAttention(nn.Module):
         self.hidden_size = config.hidden_size
         self.num_heads = config.num_attention_heads
         self.head_dim = config.head_dim
-        self.num_key_value_heads = self.num_key_value_heads
+        self.num_key_value_heads = config.num_key_value_heads
         self.num_key_value_groups = self.num_heads // self.num_key_value_heads
         self.max_position_embeddings = config.max_position_embeddings
         self.rope_theta = config.rope_theta
@@ -226,7 +226,7 @@ class GemmaAttention(nn.Module):
         cos, sin = self.rotary_emb(value_states, position_ids, seq_len=None)
 
         if kv_cache is not None:
-            key_states, value_states = kv_cache.udpate(key_states, value_states, self.layer_idx)
+            key_states, value_states = kv_cache.update(key_states, value_states, self.layer_idx)
         
         key_states = repeat_kv(key_states, self.num_key_value_groups)
         value_states = repeat_kv(value_states, self.num_key_value_groups)
@@ -431,7 +431,7 @@ class PaliGemmaForConditionalGeneration(nn.Module):
         min_dtype = torch.finfo(dtype).min
         q_len = inputs_embeds.shape[1]
 
-        if kv_cache in None or kv_cache.num_items() == 0:
+        if kv_cache is None or kv_cache.num_items() == 0:
             causal_mask = torch.full(
                 (batch_size, q_len, q_len), fill_value=0, dtype=dtype, device=device
             )
