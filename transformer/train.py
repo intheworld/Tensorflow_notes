@@ -37,7 +37,9 @@ def greedy_decode(model, source, source_mask, tokenizer_src, tokenizer_tgt, max_
 
         decoder_mask = causal_mask(decoder_input.size(1)).type_as(source_mask).to(device)
         out = model.decode(encoder_output, source_mask, decoder_input, decoder_mask)
-
+        ## 这里就是seq_len维度的最后一个“新token了”
+        ## out[:, -1] ：与显式写法 out[:, -1, :] 效果相同
+        ## 第一维度是batch_size, 第二维度是seq_len，第三维度是d_model(映射后就是vocab_size)
         prob = model.project(out[:, -1])
         _, next_word = torch.max(prob, dim=1)
         decoder_input = torch.cat(
